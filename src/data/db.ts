@@ -9,7 +9,12 @@ const DB_FILE_PATH = path.join(process.cwd(), 'src', 'data', 'db.json');
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const useSupabase = !!(supabaseUrl && supabaseKey);
+const useSupabase = !!(
+  supabaseUrl && 
+  supabaseUrl.startsWith('http') && 
+  supabaseKey && 
+  !supabaseKey.includes('입력')
+);
 const supabase = useSupabase ? createClient(supabaseUrl!, supabaseKey!) : null;
 
 if (useSupabase) {

@@ -3,9 +3,9 @@
 import React, { useMemo, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, CellValueChangedEvent, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import { PriceDataRow } from '../data/dummyData';
+import { PriceDataRow, QUARTERS, COMPANIES, ITEM_CONFIGS } from '../data/dummyData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
-import { Table, CheckSquare, Edit, DollarSign } from 'lucide-react';
+import { Table, CheckSquare, Edit3 } from 'lucide-react';
 
 // Import AG Grid styles
 import 'ag-grid-community/styles/ag-grid.css';
@@ -18,6 +18,7 @@ interface PriceGridProps {
   rowData: PriceDataRow[];
   onRowDataChange: (updatedRow: PriceDataRow) => void;
   onDeleteRows: (ids: string[]) => void;
+  onEditBatch: (company: string, quarter: string, siteName: string) => void;
 }
 
 // Custom Checkbox Cell Renderer for interactive toggle
@@ -40,13 +41,17 @@ const CheckboxCellRenderer = (params: any) => {
   );
 };
 
-export const PriceGrid: React.FC<PriceGridProps> = ({ rowData, onRowDataChange, onDeleteRows }) => {
+export const PriceGrid: React.FC<PriceGridProps> = ({
+  rowData,
+  onRowDataChange,
+  onDeleteRows,
+  onEditBatch
+}) => {
   const gridRef = useRef<AgGridReact<PriceDataRow>>(null);
 
   const handleDeleteSelected = () => {
-    const selectedNodes = gridRef.current?.api.getSelectedNodes();
-    const selectedData = selectedNodes?.map(node => node.data).filter(Boolean) as PriceDataRow[];
-    if (!selectedData || selectedData.length === 0) {
+    const selectedData = (gridRef.current?.api.getSelectedRows() || []) as PriceDataRow[];
+    if (selectedData.length === 0) {
       alert('삭제할 데이터를 선택해주세요.');
       return;
     }
@@ -55,18 +60,16 @@ export const PriceGrid: React.FC<PriceGridProps> = ({ rowData, onRowDataChange, 
       onDeleteRows(idsToDelete);
     }
   };
+
+  // Configure row selection for AG Grid v32
+  const rowSelection = useMemo(() => ({
+    mode: 'multiRow' as const,
+    checkboxes: true,
+    headerCheckbox: true,
+  }), []);
+
   // Column definitions
   const columnDefs = useMemo<ColDef<PriceDataRow>[]>(() => [
-    {
-      width: 50,
-      checkboxSelection: true,
-      headerCheckboxSelection: true,
-      pinned: 'left',
-      filter: false,
-      sortable: false,
-      suppressMenu: true,
-      cellClass: 'flex items-center justify-center border-r border-slate-200 dark:border-slate-800'
-    },
     {
       headerName: '그래프 반영',
       field: 'includeInGraph',
@@ -78,18 +81,28 @@ export const PriceGrid: React.FC<PriceGridProps> = ({ rowData, onRowDataChange, 
       cellClass: 'flex items-center justify-center'
     },
     {
-      headerName: '분기',
+      headerName: '분기 (선택수정 ✎)',
       field: 'quarter',
       width: 140,
       filter: 'agTextColumnFilter',
-      pinned: 'left'
+      pinned: 'left',
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: QUARTERS
+      }
     },
     {
-      headerName: '건설사',
+      headerName: '건설사 (선택수정 ✎)',
       field: 'company',
-      width: 130,
+      width: 140,
       filter: 'agTextColumnFilter',
-      pinned: 'left'
+      pinned: 'left',
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: COMPANIES
+      }
     },
     {
       headerName: '현장명',
@@ -112,10 +125,15 @@ export const PriceGrid: React.FC<PriceGridProps> = ({ rowData, onRowDataChange, 
       filter: 'agTextColumnFilter'
     },
     {
-      headerName: '규격',
+      headerName: '규격 (선택수정 ✎)',
       field: 'spec',
       width: 180,
-      filter: 'agTextColumnFilter'
+      filter: 'agTextColumnFilter',
+      editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: Array.from(new Set(ITEM_CONFIGS.map(cfg => cfg.spec)))
+      }
     },
     {
       headerName: '단위',
@@ -205,7 +223,8 @@ export const PriceGrid: React.FC<PriceGridProps> = ({ rowData, onRowDataChange, 
           </div>
         </div>
         <CardDescription className="text-sm text-slate-500 dark:text-slate-400">
-          단가 셀을 <strong>더블 클릭하여 금액을 직접 변경</strong>하거나, 그래프 반영 체크박스를 선택 해제하여 제외할 수 있습니다.
+          단가 셀을 <strong>더블 클릭하여 금액을 직접 변경</strong>하거나, 그래프 반영 체크박스를 선택 해제하여 제외할 수 있습니다. 
+          또한, <strong>행을 클릭하면 상단 신규등록 패널이 수정 모드로 전환</strong>되어 일괄 수정등록이 가능합니다.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -221,8 +240,14 @@ export const PriceGrid: React.FC<PriceGridProps> = ({ rowData, onRowDataChange, 
             suppressCellFocus={true}
             headerHeight={48}
             rowHeight={44}
-            rowSelection="multiple"
+            rowSelection={rowSelection}
             suppressRowClickSelection={true}
+            onRowClicked={(event) => {
+              if (event.data) {
+                const { company, quarter, siteName } = event.data;
+                onEditBatch(company, quarter, siteName);
+              }
+            }}
           />
         </div>
       </CardContent>

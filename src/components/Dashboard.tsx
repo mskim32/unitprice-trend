@@ -30,6 +30,12 @@ export default function Dashboard() {
     amount: number;
   } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingBatch, setEditingBatch] = useState<{
+    quarter: string;
+    company: string;
+    siteName: string;
+    prices: { [itemName: string]: number };
+  } | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
@@ -179,6 +185,86 @@ export default function Dashboard() {
     }
   };
 
+  // Handle updating an existing batch of quarterly data (Edit Mode)
+  const handleUpdatePerformanceData = async (
+    oldBatch: { quarter: string; company: string; siteName: string },
+    newBatch: { quarter: string; company: string; siteName: string; prices: { [itemName: string]: number } }
+  ) => {
+    const matchingOldRows = allData.filter(
+      r => r.quarter === oldBatch.quarter && r.company === oldBatch.company && r.siteName === oldBatch.siteName
+    );
+
+    const updatedRows: PriceDataRow[] = ITEM_CONFIGS.map((cfg, index) => {
+      const price = newBatch.prices[cfg.name] || 0;
+      const existingRow = matchingOldRows.find(r => r.itemName === cfg.name);
+      
+      if (existingRow) {
+        return {
+          ...existingRow,
+          quarter: newBatch.quarter,
+          company: newBatch.company,
+          siteName: newBatch.siteName,
+          price
+        };
+      } else {
+        return {
+          id: `row-new-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
+          quarter: newBatch.quarter,
+          company: newBatch.company,
+          siteName: newBatch.siteName,
+          itemName: cfg.name,
+          division: cfg.division,
+          spec: cfg.spec,
+          unit: cfg.unit,
+          quantity: cfg.quantity,
+          price,
+          includeInGraph: true
+        };
+      }
+    });
+
+    // Optimistic UI update: Filter out old matching rows and prepend updated rows
+    setAllData(prevData => {
+      const filtered = prevData.filter(
+        r => !(r.quarter === oldBatch.quarter && r.company === oldBatch.company && r.siteName === oldBatch.siteName)
+      );
+      return [...updatedRows, ...filtered];
+    });
+
+    setEditingBatch(null);
+
+    // Save changes to database: delete the old ones first, then insert updated ones
+    try {
+      const oldIds = matchingOldRows.map(r => r.id);
+      if (oldIds.length > 0) {
+        await fetch('/api/prices', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: oldIds })
+        });
+      }
+      await fetch('/api/prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: updatedRows })
+      });
+    } catch (err) {
+      console.error('Failed to update batch in database:', err);
+    }
+  };
+
+  // Handle setting active edit batch from selected grid row
+  const handleEditBatch = (company: string, quarter: string, siteName: string) => {
+    const matchingRows = allData.filter(
+      r => r.company === company && r.quarter === quarter && r.siteName === siteName
+    );
+    const prices: { [itemName: string]: number } = {};
+    matchingRows.forEach(r => {
+      prices[r.itemName] = r.price;
+    });
+    setEditingBatch({ company, quarter, siteName, prices });
+  };
+
   // Handle click on chart markers
   const handleChartPointClick = (company: string, quarter: string, amount: number) => {
     setSelectedPoint({ company, quarter, amount });
@@ -311,8 +397,13 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Input Panel for registering new data */}
-      <InputPanel onAddData={handleAddPerformanceData} />
+      {/* Input Panel for registering or updating data */}
+      <InputPanel
+        onAddData={handleAddPerformanceData}
+        editingBatch={editingBatch}
+        onUpdateData={handleUpdatePerformanceData}
+        onCancelEdit={() => setEditingBatch(null)}
+      />
 
       {/* Main Content Layout */}
       {/* Central Area: Chart */}
@@ -339,6 +430,7 @@ export default function Dashboard() {
           rowData={filteredGridData}
           onRowDataChange={handleRowDataChange}
           onDeleteRows={handleDeleteRows}
+          onEditBatch={handleEditBatch}
         />
       </div>
 

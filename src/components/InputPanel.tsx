@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
-import { ITEM_CONFIGS, ItemConfig, COMPANIES, QUARTERS } from '../data/dummyData';
-import { Plus, PlusCircle, Building2, Calendar, MapPin, ChevronDown, ChevronUp, Check } from 'lucide-react';
+import { ITEM_CONFIGS, COMPANIES, QUARTERS } from '../data/dummyData';
+import { Plus, PlusCircle, Edit, Building2, Calendar, MapPin, ChevronDown, ChevronUp, Check, XCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface InputPanelProps {
@@ -13,9 +13,25 @@ interface InputPanelProps {
     siteName: string;
     prices: { [itemName: string]: number };
   }) => void;
+  editingBatch: {
+    quarter: string;
+    company: string;
+    siteName: string;
+    prices: { [itemName: string]: number };
+  } | null;
+  onUpdateData: (
+    oldBatch: { quarter: string; company: string; siteName: string },
+    newBatch: { quarter: string; company: string; siteName: string; prices: { [itemName: string]: number } }
+  ) => void;
+  onCancelEdit: () => void;
 }
 
-export const InputPanel: React.FC<InputPanelProps> = ({ onAddData }) => {
+export const InputPanel: React.FC<InputPanelProps> = ({
+  onAddData,
+  editingBatch,
+  onUpdateData,
+  onCancelEdit
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [company, setCompany] = useState(COMPANIES[0]);
   const [quarter, setQuarter] = useState(QUARTERS[0]);
@@ -34,8 +50,32 @@ export const InputPanel: React.FC<InputPanelProps> = ({ onAddData }) => {
 
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Monitor editingBatch changes to populate inputs
+  useEffect(() => {
+    if (editingBatch) {
+      setCompany(editingBatch.company);
+      if (QUARTERS.includes(editingBatch.quarter)) {
+        setQuarter(editingBatch.quarter);
+        setIsCustomQuarter(false);
+        setCustomQuarter('');
+      } else {
+        setQuarter(QUARTERS[0]);
+        setIsCustomQuarter(true);
+        setCustomQuarter(editingBatch.quarter);
+      }
+      setSiteName(editingBatch.siteName === '-' ? '' : editingBatch.siteName);
+      
+      const newPrices: { [key: string]: string } = {};
+      ITEM_CONFIGS.forEach(cfg => {
+        const val = editingBatch.prices[cfg.name];
+        newPrices[cfg.name] = val !== undefined ? String(val) : '';
+      });
+      setPrices(newPrices);
+      setIsOpen(true); // Auto-open form on select
+    }
+  }, [editingBatch]);
+
   const handlePriceChange = (itemName: string, value: string) => {
-    // Only allow numbers
     const cleanValue = value.replace(/[^0-9]/g, '');
     setPrices(prev => ({
       ...prev,
@@ -43,17 +83,27 @@ export const InputPanel: React.FC<InputPanelProps> = ({ onAddData }) => {
     }));
   };
 
+  const handleCancel = () => {
+    onCancelEdit();
+    setSiteName('');
+    setPrices(() => {
+      const initial: { [key: string]: string } = {};
+      ITEM_CONFIGS.forEach(cfg => {
+        initial[cfg.name] = '';
+      });
+      return initial;
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const selectedQuarter = isCustomQuarter ? customQuarter.trim() : quarter;
 
-    // Validate inputs
     if (!selectedQuarter) {
       setMessage({ type: 'error', text: '분기를 선택하거나 입력해주세요.' });
       return;
     }
-
 
     // Parse prices
     const parsedPrices: { [itemName: string]: number } = {};
@@ -74,18 +124,38 @@ export const InputPanel: React.FC<InputPanelProps> = ({ onAddData }) => {
 
     const finalSiteName = siteName.trim() || '-';
 
-    // Call submit handler
-    onAddData({
-      quarter: selectedQuarter,
-      company,
-      siteName: finalSiteName,
-      prices: parsedPrices
-    });
-
-    // Success feedback
-    setMessage({ type: 'success', text: `${company} [${selectedQuarter}${finalSiteName !== '-' ? ` - ${finalSiteName}` : ''}] 실적 데이터가 등록되었습니다.` });
+    if (editingBatch) {
+      onUpdateData(
+        {
+          quarter: editingBatch.quarter,
+          company: editingBatch.company,
+          siteName: editingBatch.siteName
+        },
+        {
+          quarter: selectedQuarter,
+          company,
+          siteName: finalSiteName,
+          prices: parsedPrices
+        }
+      );
+      setMessage({
+        type: 'success',
+        text: `${company} [${selectedQuarter}${finalSiteName !== '-' ? ` - ${finalSiteName}` : ''}] 실적 데이터가 수정 완료되었습니다.`
+      });
+    } else {
+      onAddData({
+        quarter: selectedQuarter,
+        company,
+        siteName: finalSiteName,
+        prices: parsedPrices
+      });
+      setMessage({
+        type: 'success',
+        text: `${company} [${selectedQuarter}${finalSiteName !== '-' ? ` - ${finalSiteName}` : ''}] 실적 데이터가 등록되었습니다.`
+      });
+    }
     
-    // Reset form fields (except company/quarter for batch convenience)
+    // Clear siteName and prices
     setSiteName('');
     setPrices(() => {
       const initial: { [key: string]: string } = {};
@@ -95,20 +165,21 @@ export const InputPanel: React.FC<InputPanelProps> = ({ onAddData }) => {
       return initial;
     });
 
-    // Clear feedback message after 3 seconds
     setTimeout(() => {
       setMessage(null);
     }, 4000);
   };
 
-
-
-  // Group configurations by division
   const bondongConfigs = ITEM_CONFIGS.filter(cfg => cfg.division === '본동(아파트)');
   const budaedongConfigs = ITEM_CONFIGS.filter(cfg => cfg.division === '부대동(주차장등)');
 
   return (
-    <Card className="w-full border-slate-200 dark:border-slate-800 transition-all duration-300">
+    <Card className={clsx(
+      "w-full transition-all duration-300 border-2",
+      editingBatch 
+        ? "border-blue-500/80 dark:border-blue-600/80 shadow-lg shadow-blue-500/5 ring-4 ring-blue-500/5" 
+        : "border-slate-200 dark:border-slate-800"
+    )}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-5 text-left focus:outline-none cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-900/20 transition-colors rounded-t-2xl"
@@ -116,14 +187,16 @@ export const InputPanel: React.FC<InputPanelProps> = ({ onAddData }) => {
         <div className="flex items-center gap-3">
           <div className={clsx(
             "p-2 rounded-xl text-white transition-all duration-300",
-            isOpen ? "bg-blue-600 shadow-md shadow-blue-500/20" : "bg-slate-700"
+            editingBatch
+              ? "bg-blue-600 shadow-md shadow-blue-500/20"
+              : isOpen ? "bg-indigo-600 shadow-md shadow-indigo-500/20" : "bg-slate-700"
           )}>
-            <Plus className="h-5 w-5" />
+            {editingBatch ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
           </div>
           <div>
             <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
-              분기별 실적 데이터 신규 등록
-              {!isOpen && (
+              {editingBatch ? '분기별 실적 데이터 수정등록 (수정 모드)' : '분기별 실적 데이터 신규 등록'}
+              {!isOpen && !editingBatch && (
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
@@ -131,7 +204,9 @@ export const InputPanel: React.FC<InputPanelProps> = ({ onAddData }) => {
               )}
             </CardTitle>
             <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-              특정 분기, 건설사, 현장에 대해 본동/부대동 8개 표준 공종의 실제 실적 단가를 일괄 입력하여 대시보드에 반영합니다.
+              {editingBatch 
+                ? '선택하신 현장의 실적 데이터를 수정합니다. 값을 변경한 뒤 완료 버튼을 클릭해 주세요.' 
+                : '특정 분기, 건설사, 현장에 대해 본동/부대동 8개 표준 공종의 실제 실적 단가를 일괄 입력하여 대시보드에 반영합니다.'}
             </CardDescription>
           </div>
         </div>
@@ -296,12 +371,27 @@ export const InputPanel: React.FC<InputPanelProps> = ({ onAddData }) => {
                 )}
               </div>
               <div className="flex gap-2 self-end">
+                {editingBatch && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-350 rounded-lg cursor-pointer flex items-center gap-1.5 transition-all duration-200"
+                  >
+                    <XCircle className="h-3.5 w-3.5 text-slate-500" />
+                    취소 (신규 등록으로 전환)
+                  </button>
+                )}
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white rounded-lg cursor-pointer flex items-center gap-1.5 shadow-md shadow-blue-500/10 hover:shadow-blue-500/20 transition-all duration-200"
+                  className={clsx(
+                    "px-5 py-2 text-xs font-semibold text-white rounded-lg cursor-pointer flex items-center gap-1.5 shadow-md transition-all duration-200",
+                    editingBatch 
+                      ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/10 hover:shadow-blue-500/20" 
+                      : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/10 hover:shadow-indigo-500/20"
+                  )}
                 >
                   <PlusCircle className="h-3.5 w-3.5" />
-                  실적 데이터 일괄 등록
+                  {editingBatch ? '실적 데이터 수정 완료' : '실적 데이터 일괄 등록'}
                 </button>
               </div>
             </div>
