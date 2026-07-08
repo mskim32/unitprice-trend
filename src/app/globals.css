@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #020617;
+    --foreground: #f8fafc;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom styles for AG Grid editable price cell */
+.editable-price-cell {
+  background-color: rgba(37, 99, 235, 0.07) !important;
+  color: #1e40af !important;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  font-weight: 600;
+}
+
+.dark .editable-price-cell {
+  background-color: rgba(37, 99, 235, 0.12) !important;
+  color: #60a5fa !important;
+}
+
+.editable-price-cell:hover {
+  background-color: rgba(37, 99, 235, 0.12) !important;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.3) !important;
+}
+
+.dark .editable-price-cell:hover {
+  background-color: rgba(37, 99, 235, 0.2) !important;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.5) !important;
+}
+
+/* AG Grid visual modifications */
+.ag-theme-quartz, .ag-theme-quartz-dark {
+  --ag-font-family: 'Inter', system-ui, sans-serif !important;
+  --ag-grid-size: 6px !important;
+  --ag-list-item-height: 28px !important;
+  --ag-header-background-color: #f1f5f9 !important;
+  --ag-header-foreground-color: #334155 !important;
+  --ag-header-cell-font-weight: 700 !important;
+}
+
+.dark .ag-theme-quartz-dark {
+  --ag-header-background-color: #0f172a !important;
+  --ag-header-foreground-color: #cbd5e1 !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
