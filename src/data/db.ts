@@ -21,12 +21,11 @@ if (useSupabase) {
 // Helper to load local JSON database
 function getLocalData(): PriceDataRow[] {
   if (!fs.existsSync(DB_FILE_PATH)) {
-    // Seed with initial dummy data
-    const dummy = generateDummyData();
+    const empty: PriceDataRow[] = [];
     // Ensure parent directories exist
     fs.mkdirSync(path.dirname(DB_FILE_PATH), { recursive: true });
-    fs.writeFileSync(DB_FILE_PATH, JSON.stringify(dummy, null, 2), 'utf-8');
-    return dummy;
+    fs.writeFileSync(DB_FILE_PATH, JSON.stringify(empty, null, 2), 'utf-8');
+    return empty;
   }
   try {
     const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
@@ -52,29 +51,9 @@ export async function getAllPrices(): Promise<PriceDataRow[]> {
 
       if (error) throw error;
       
-      // If Supabase table is empty, seed it with the dummy data!
       if (!data || data.length === 0) {
-        console.log('Supabase table is empty, seeding initial data...');
-        const initialData = generateDummyData();
-        // Insert in batches of 100 rows
-        for (let i = 0; i < initialData.length; i += 100) {
-          const batch = initialData.slice(i, i + 100).map(row => ({
-            id: row.id,
-            quarter: row.quarter,
-            company: row.company,
-            site_name: row.siteName,
-            division: row.division,
-            item_name: row.itemName,
-            spec: row.spec,
-            unit: row.unit,
-            quantity: row.quantity,
-            price: row.price,
-            include_in_graph: row.includeInGraph
-          }));
-          const { error: seedError } = await supabase.from('price_performance').insert(batch);
-          if (seedError) console.error('Failed to seed batch:', seedError);
-        }
-        return initialData;
+        console.log('Supabase table is empty.');
+        return [];
       }
 
       // Map database schema columns back to camelCase PriceDataRow interface
