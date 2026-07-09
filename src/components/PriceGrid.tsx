@@ -138,8 +138,6 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
   // Configure row selection for AG Grid v36
   const rowSelection = useMemo(() => ({
     mode: 'multiRow' as const,
-    checkboxes: false,
-    headerCheckbox: false,
   }), []);
 
   // Column definitions
