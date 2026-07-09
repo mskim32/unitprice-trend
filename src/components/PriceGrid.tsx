@@ -148,26 +148,24 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
   // Configure row selection for AG Grid v36
   const rowSelection = useMemo(() => ({
     mode: 'multiRow' as const,
-    checkboxes: false,
-    headerCheckbox: false,
+    checkboxes: true,
+    headerCheckbox: true,
+  }), []);
+
+  // Configure selection column template
+  const selectionColumnDef = useMemo(() => ({
+    colId: 'selection',
+    width: 50,
+    pinned: 'left' as const,
+    sortable: false,
+    filter: false,
+    resizable: false,
+    suppressMovable: true,
   }), []);
 
 
-  // Column definitions
+
   const columnDefs = useMemo<ColDef<PriceDataRow>[]>(() => [
-    {
-      colId: 'selection',
-      headerName: '',
-      width: 50,
-      checkboxSelection: true,
-      headerCheckboxSelection: true,
-      pinned: 'left',
-      sortable: false,
-      filter: false,
-      resizable: false,
-      suppressMovable: true,
-      cellClass: 'flex items-center justify-center'
-    },
     {
       headerName: '그래프 반영',
       field: 'includeInGraph',
@@ -344,12 +342,13 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
             headerHeight={48}
             rowHeight={44}
             rowSelection={rowSelection}
+            selectionColumnDef={selectionColumnDef}
             onGridReady={onGridReady}
             suppressRowClickSelection={true}
             localeText={AG_GRID_LOCALE_KO}
             onCellClicked={(event) => {
               const colId = event.column?.getColId();
-              if (colId === 'selection' || colId === 'includeInGraph') {
+              if (colId === 'selection' || colId === 'includeInGraph' || colId === 'ag-Grid-SelectionColumn') {
                 return;
               }
               if (event.data) {
