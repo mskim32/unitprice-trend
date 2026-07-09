@@ -50,6 +50,13 @@ export const InputPanel: React.FC<InputPanelProps> = ({
 
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Helper to format string or number to localized currency string (thousands separator)
+  const formatNumberWithCommas = (val: string | number) => {
+    const cleanStr = String(val).replace(/[^0-9]/g, '');
+    if (!cleanStr) return '';
+    return Number(cleanStr).toLocaleString('ko-KR');
+  };
+
   // Monitor editingBatch changes to populate inputs
   useEffect(() => {
     if (editingBatch) {
@@ -68,7 +75,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       const newPrices: { [key: string]: string } = {};
       ITEM_CONFIGS.forEach(cfg => {
         const val = editingBatch.prices[cfg.name];
-        newPrices[cfg.name] = val !== undefined ? String(val) : '';
+        newPrices[cfg.name] = val !== undefined ? formatNumberWithCommas(val) : '';
       });
       setPrices(newPrices);
       setIsOpen(true); // Auto-open form on select
@@ -76,10 +83,10 @@ export const InputPanel: React.FC<InputPanelProps> = ({
   }, [editingBatch]);
 
   const handlePriceChange = (itemName: string, value: string) => {
-    const cleanValue = value.replace(/[^0-9]/g, '');
+    const formatted = formatNumberWithCommas(value);
     setPrices(prev => ({
       ...prev,
-      [itemName]: cleanValue
+      [itemName]: formatted
     }));
   };
 
@@ -114,7 +121,9 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       if (!priceStr) {
         hasError = true;
       }
-      parsedPrices[cfg.name] = parseInt(priceStr, 10) || 0;
+      // Remove commas before parsing to number
+      const cleanPriceStr = priceStr ? priceStr.replace(/,/g, '') : '';
+      parsedPrices[cfg.name] = parseInt(cleanPriceStr, 10) || 0;
     });
 
     if (hasError) {

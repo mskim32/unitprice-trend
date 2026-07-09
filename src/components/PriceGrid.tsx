@@ -161,6 +161,11 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
         return params.value ? new Intl.NumberFormat('ko-KR').format(params.value) + '원' : '0원';
       },
       valueParser: (params) => {
+        if (typeof params.newValue === 'string') {
+          const cleanValue = params.newValue.replace(/,/g, '');
+          const newValue = parseInt(cleanValue, 10);
+          return isNaN(newValue) ? 0 : newValue;
+        }
         const newValue = parseInt(params.newValue, 10);
         return isNaN(newValue) ? 0 : newValue;
       }
