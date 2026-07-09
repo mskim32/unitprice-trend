@@ -14,6 +14,80 @@ import 'ag-grid-community/styles/ag-theme-quartz.css';
 // Register all community features (such as cell editors)
 ModuleRegistry.registerModules([AllCommunityModule]);
 
+// Korean localization for AG Grid
+const AG_GRID_LOCALE_KO = {
+  // Set Filter
+  selectAll: '(전체 선택)',
+  selectAllSearchResults: '(검색 결과 전체 선택)',
+  searchOoo: '검색...',
+  noMatches: '일치하는 결과가 없습니다.',
+
+  // Number Filter & Text Filter
+  filterOoo: '필터...',
+  equals: '같음',
+  notEqual: '같지 않음',
+  blank: '빈 값',
+  notBlank: '빈 값 아님',
+  empty: '선택해 주세요',
+
+  // Number Filter
+  lessThan: '미만',
+  greaterThan: '초과',
+  lessThanOrEqual: '이하',
+  greaterThanOrEqual: '이상',
+  inRange: '범위 내',
+  inRangeStart: '시작값',
+  inRangeEnd: '종료값',
+
+  // Text Filter
+  contains: '포함',
+  notContains: '포함하지 않음',
+  startsWith: '시작 문자',
+  endsWith: '끝 문자',
+
+  // Date Filter
+  dateFormatOoo: 'yyyy-mm-dd',
+  before: '이전',
+  after: '이후',
+
+  // Filter Conditions
+  andCondition: '그리고',
+  orCondition: '또는',
+
+  // Filter Buttons
+  applyFilter: '적용',
+  clearFilter: '지우기',
+  resetFilter: '초기화',
+  cancelFilter: '취소',
+
+  // Header Options
+  pinColumn: '열 고정',
+  pinLeft: '왼쪽 고정',
+  pinRight: '오른쪽 고정',
+  noPin: '고정 해제',
+  valueAggregation: '값 합계',
+  autosizeThiscolumn: '이 열 너비 자동 맞춤',
+  autosizeAllColumns: '모든 열 너비 자동 맞춤',
+  groupBy: '그룹화 기준',
+  ungroupBy: '그룹화 해제',
+  addToValues: '값에 추가',
+  addToLabels: '레이블에 추가',
+
+  // Rows
+  noRowsToShow: '표시할 행이 없습니다.',
+
+  // Column Menu
+  pinColumnTitle: '열 고정',
+  valueAggregationTitle: '값 집계',
+  autosizeThiscolumnTitle: '이 열 너비 자동 맞춤',
+  autosizeAllColumnsTitle: '모든 열 너비 자동 맞춤',
+  groupByTitle: '그룹화 기준',
+  ungroupByTitle: '그룹화 해제',
+  
+  // Grid
+  loadingOoo: '불러오는 중...',
+};
+
 interface PriceGridProps {
   rowData: PriceDataRow[];
   onRowDataChange: (updatedRow: PriceDataRow) => void;
@@ -247,6 +321,7 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
             rowHeight={44}
             rowSelection={rowSelection}
             suppressRowClickSelection={true}
+            localeText={AG_GRID_LOCALE_KO}
             onRowClicked={(event) => {
               if (event.data) {
                 const { company, quarter, siteName } = event.data;
