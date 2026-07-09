@@ -2,11 +2,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
-import { ITEM_CONFIGS, COMPANIES, QUARTERS } from '../data/dummyData';
+import { ITEM_CONFIGS, COMPANIES, QUARTERS, PriceDataRow } from '../data/dummyData';
 import { Plus, PlusCircle, Edit, Building2, Calendar, MapPin, ChevronDown, ChevronUp, Check, XCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface InputPanelProps {
+  allData: PriceDataRow[];
+  onLoadExistingBatch: (
+    company: string,
+    quarter: string,
+    siteName: string,
+    prices: { [itemName: string]: number }
+  ) => void;
   onAddData: (newData: {
     quarter: string;
     company: string;
@@ -27,6 +34,8 @@ interface InputPanelProps {
 }
 
 export const InputPanel: React.FC<InputPanelProps> = ({
+  allData,
+  onLoadExistingBatch,
   onAddData,
   editingBatch,
   onUpdateData,
@@ -81,6 +90,49 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       setIsOpen(true); // Auto-open form on select
     }
   }, [editingBatch]);
+
+  // Check if there is an existing batch for the current company/quarter/siteName
+  useEffect(() => {
+    const currentQuarter = isCustomQuarter ? customQuarter.trim() : quarter;
+    const currentSiteName = siteName.trim() || '-';
+
+    // If we are currently in edit mode and the editingBatch matches the current inputs, do nothing
+    if (editingBatch && 
+        editingBatch.company === company && 
+        editingBatch.quarter === currentQuarter && 
+        editingBatch.siteName === currentSiteName) {
+      return;
+    }
+
+    // Find if this combination exists in allData
+    const matchingRows = allData.filter(
+      r => r.company === company && r.quarter === currentQuarter && r.siteName === currentSiteName
+    );
+
+    if (matchingRows.length > 0) {
+      // It exists! Load the prices and set editingBatch
+      const pricesObj: { [itemName: string]: number } = {};
+      matchingRows.forEach(r => {
+        pricesObj[r.itemName] = r.price;
+      });
+      
+      // Trigger parent to set editingBatch
+      onLoadExistingBatch(company, currentQuarter, currentSiteName, pricesObj);
+    } else {
+      // It does not exist! If we were in edit mode, exit edit mode (set editingBatch to null)
+      if (editingBatch) {
+        onCancelEdit();
+        // Also clear prices since we transitioned back to new registration mode
+        setPrices(() => {
+          const initial: { [key: string]: string } = {};
+          ITEM_CONFIGS.forEach(cfg => {
+            initial[cfg.name] = '';
+          });
+          return initial;
+        });
+      }
+    }
+  }, [company, quarter, customQuarter, isCustomQuarter, siteName, allData, editingBatch, onLoadExistingBatch, onCancelEdit]);
 
   const handlePriceChange = (itemName: string, value: string) => {
     const formatted = formatNumberWithCommas(value);

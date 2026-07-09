@@ -135,15 +135,28 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
     }
   };
 
-  // Configure row selection for AG Grid v32
+  // Configure row selection for AG Grid v36
   const rowSelection = useMemo(() => ({
     mode: 'multiRow' as const,
-    checkboxes: true,
-    headerCheckbox: true,
+    checkboxes: false,
+    headerCheckbox: false,
   }), []);
 
   // Column definitions
   const columnDefs = useMemo<ColDef<PriceDataRow>[]>(() => [
+    {
+      colId: 'selection',
+      headerName: '',
+      width: 50,
+      checkboxSelection: true,
+      headerCheckboxSelection: true,
+      pinned: 'left',
+      sortable: false,
+      filter: false,
+      resizable: false,
+      suppressMovable: true,
+      cellClass: 'flex items-center justify-center'
+    },
     {
       headerName: '그래프 반영',
       field: 'includeInGraph',
@@ -177,13 +190,6 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
       cellEditorParams: {
         values: COMPANIES
       }
-    },
-    {
-      headerName: '현장명',
-      field: 'siteName',
-      minWidth: 260,
-      flex: 1,
-      filter: 'agTextColumnFilter'
     },
     {
       headerName: '구분',
@@ -256,6 +262,13 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
         return params.value ? new Intl.NumberFormat('ko-KR').format(params.value) + '원' : '0원';
       },
       cellClass: 'font-semibold text-slate-800 dark:text-slate-200'
+    },
+    {
+      headerName: '현장명',
+      field: 'siteName',
+      minWidth: 260,
+      flex: 1,
+      filter: 'agTextColumnFilter'
     }
   ], []);
 
@@ -322,7 +335,11 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
             rowSelection={rowSelection}
             suppressRowClickSelection={true}
             localeText={AG_GRID_LOCALE_KO}
-            onRowClicked={(event) => {
+            onCellClicked={(event) => {
+              const colId = event.column?.getColId();
+              if (colId === 'selection' || colId === 'includeInGraph') {
+                return;
+              }
               if (event.data) {
                 const { company, quarter, siteName } = event.data;
                 onEditBatch(company, quarter, siteName);

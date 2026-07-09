@@ -399,6 +399,10 @@ export default function Dashboard() {
 
       {/* Input Panel for registering or updating data */}
       <InputPanel
+        allData={allData}
+        onLoadExistingBatch={(company, quarter, siteName, prices) => {
+          setEditingBatch({ company, quarter, siteName, prices });
+        }}
         onAddData={handleAddPerformanceData}
         editingBatch={editingBatch}
         onUpdateData={handleUpdatePerformanceData}
