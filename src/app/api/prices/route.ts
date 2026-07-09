@@ -1,8 +1,39 @@
 import { NextResponse } from 'next/server';
 import { getAllPrices, insertPrices, updatePrice, deletePrices } from '../../../data/db';
+import { generateDummyData } from '../../../data/dummyData';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const restore = searchParams.get('restore');
+
+    if (restore === 'all') {
+      const dummyData = generateDummyData();
+      const currentPrices = await getAllPrices();
+      
+      // Find rows in dummyData that are missing in current database by looking at their unique attributes:
+      // company, quarter, siteName, and itemName.
+      const existingKeys = new Set(
+        currentPrices.map(r => `${r.company}_${r.quarter}_${r.siteName}_${r.itemName}`)
+      );
+
+      const rowsToInsert = dummyData.filter(
+        row => !existingKeys.has(`${row.company}_${row.quarter}_${row.siteName}_${row.itemName}`)
+      );
+
+      if (rowsToInsert.length > 0) {
+        // Assign new unique IDs to be safe
+        const preparedRows = rowsToInsert.map((row, idx) => ({
+          ...row,
+          id: `row-restored-${Date.now()}-${idx}`
+        }));
+        await insertPrices(preparedRows);
+        return NextResponse.json({ success: true, restoredCount: preparedRows.length });
+      } else {
+        return NextResponse.json({ success: true, message: 'All data is already present.', count: currentPrices.length });
+      }
+    }
+
     const data = await getAllPrices();
     return NextResponse.json(data);
   } catch (error: any) {
