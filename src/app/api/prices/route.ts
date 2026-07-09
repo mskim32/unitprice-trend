@@ -1,35 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAllPrices, insertPrices, updatePrice, deletePrices } from '../../../data/db';
-import { generateDummyData } from '../../../data/dummyData';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const restore = searchParams.get('restore');
-
-    if (restore === 'true') {
-      const dummyData = generateDummyData();
-      const daewooRows = dummyData.filter(
-        row => row.quarter === '25년 3/4분기' && row.company === '대우건설'
-      );
-
-      const currentPrices = await getAllPrices();
-      const existing = currentPrices.filter(
-        row => row.quarter === '25년 3/4분기' && row.company === '대우건설'
-      );
-
-      if (existing.length === 0) {
-        const rowsToInsert = daewooRows.map((row, idx) => ({
-          ...row,
-          id: `row-restore-${Date.now()}-${idx}`
-        }));
-        await insertPrices(rowsToInsert);
-        return NextResponse.json({ success: true, restoredCount: rowsToInsert.length });
-      } else {
-        return NextResponse.json({ success: true, message: 'Data already exists, no restore needed.', count: existing.length });
-      }
-    }
-
     const data = await getAllPrices();
     return NextResponse.json(data);
   } catch (error: any) {
