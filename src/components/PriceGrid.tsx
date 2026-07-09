@@ -122,9 +122,19 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
   onEditBatch
 }) => {
   const gridRef = useRef<AgGridReact<PriceDataRow>>(null);
+  const gridApiRef = useRef<any>(null);
+
+  const onGridReady = (params: any) => {
+    gridApiRef.current = params.api;
+  };
 
   const handleDeleteSelected = () => {
-    const selectedData = (gridRef.current?.api.getSelectedRows() || []) as PriceDataRow[];
+    const api = gridApiRef.current;
+    if (!api) {
+      alert('그리드가 아직 준비되지 않았습니다.');
+      return;
+    }
+    const selectedData = api.getSelectedRows() as PriceDataRow[];
     if (selectedData.length === 0) {
       alert('삭제할 데이터를 선택해주세요.');
       return;
@@ -134,6 +144,13 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
       onDeleteRows(idsToDelete);
     }
   };
+
+  // Configure row selection for AG Grid v36
+  const rowSelection = useMemo(() => ({
+    mode: 'multiRow' as const,
+    checkboxes: false,
+    headerCheckbox: false,
+  }), []);
 
 
   // Column definitions
@@ -326,7 +343,8 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
             suppressCellFocus={true}
             headerHeight={48}
             rowHeight={44}
-            rowSelection="multiple"
+            rowSelection={rowSelection}
+            onGridReady={onGridReady}
             suppressRowClickSelection={true}
             localeText={AG_GRID_LOCALE_KO}
             onCellClicked={(event) => {
