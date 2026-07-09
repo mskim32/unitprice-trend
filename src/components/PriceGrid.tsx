@@ -135,10 +135,6 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
     }
   };
 
-  // Configure row selection for AG Grid v36
-  const rowSelection = useMemo(() => ({
-    mode: 'multiRow' as const,
-  }), []);
 
   // Column definitions
   const columnDefs = useMemo<ColDef<PriceDataRow>[]>(() => [
@@ -330,7 +326,7 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
             suppressCellFocus={true}
             headerHeight={48}
             rowHeight={44}
-            rowSelection={rowSelection}
+            rowSelection="multiple"
             suppressRowClickSelection={true}
             localeText={AG_GRID_LOCALE_KO}
             onCellClicked={(event) => {
