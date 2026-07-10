@@ -6,7 +6,6 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const restore = searchParams.get('restore');
-
     if (restore === 'all') {
       const dummyData = generateDummyData();
       const currentPrices = await getAllPrices();

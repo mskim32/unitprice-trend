@@ -92,10 +92,50 @@ export const QuarterlyComparison: React.FC<QuarterlyComparisonProps> = ({
       };
     });
 
+    // Calculate averages across all companies for each item
+    const itemAverages: { 
+      [itemName: string]: { 
+        currentAvgPrice: number; 
+        prevAvgPrice: number; 
+      } 
+    } = {};
+
+    let avgTotalCurrent = 0;
+    let avgTotalPrev = 0;
+
+    ITEM_CONFIGS.forEach((cfg) => {
+      const curPricesForCfg: number[] = [];
+      const prevPricesForCfg: number[] = [];
+
+      companies.forEach((comp) => {
+        const curRow = currentMap[comp]?.[cfg.name];
+        const prevRow = prevMap[comp]?.[cfg.name];
+
+        if (curRow && curRow.price > 0) curPricesForCfg.push(curRow.price);
+        if (prevRow && prevRow.price > 0) prevPricesForCfg.push(prevRow.price);
+      });
+
+      const currentAvgPrice = curPricesForCfg.length > 0 
+        ? curPricesForCfg.reduce((sum, val) => sum + val, 0) / curPricesForCfg.length 
+        : 0;
+      
+      const prevAvgPrice = prevPricesForCfg.length > 0 
+        ? prevPricesForCfg.reduce((sum, val) => sum + val, 0) / prevPricesForCfg.length 
+        : 0;
+
+      itemAverages[cfg.name] = { currentAvgPrice, prevAvgPrice };
+
+      avgTotalCurrent += currentAvgPrice * cfg.quantity;
+      avgTotalPrev += prevAvgPrice * cfg.quantity;
+    });
+
     return {
       currentMap,
       prevMap,
-      companyTotals
+      companyTotals,
+      itemAverages,
+      avgTotalCurrent,
+      avgTotalPrev
     };
   }, [data, selectedQuarter, prevQuarter, companies]);
 
@@ -138,7 +178,7 @@ export const QuarterlyComparison: React.FC<QuarterlyComparisonProps> = ({
             건설사별 분기 실적단가 및 금액 비교 현황
           </CardTitle>
           <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
-            선택된 분기의 공종별 단가 및 수량 곱 연산 금액을 보여주며, 전분기 대비 증감율을 건설사별로 확인합니다.
+            선택된 분기의 공종별 단가 및 수량 곱 연산 금액을 보여주며, 전분기 대비 증감율을 건설사별 및 전체 평균으로 확인합니다.
           </CardDescription>
         </div>
         <div className="flex items-center gap-2 self-start md:self-center bg-slate-50 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
@@ -155,9 +195,9 @@ export const QuarterlyComparison: React.FC<QuarterlyComparisonProps> = ({
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto w-full max-w-full">
-          <table className="w-full text-xs text-left border-collapse min-w-[1200px] table-fixed">
+          <table className="w-full text-xs text-left border-collapse min-w-[1400px] table-fixed">
             <thead>
-              {/* Dummy row to enforce exact column widths in table-fixed layout without triggering React colgroup hydration warnings */}
+              {/* Dummy row to enforce exact column widths in table-fixed layout */}
               <tr className="h-0 select-none pointer-events-none p-0 border-none">
                 <th className="h-0 py-0 border-none w-16"></th>
                 <th className="h-0 py-0 border-none w-52"></th>
@@ -169,6 +209,9 @@ export const QuarterlyComparison: React.FC<QuarterlyComparisonProps> = ({
                     <th className="h-0 py-0 border-none w-40"></th>
                   </React.Fragment>
                 ))}
+                {/* Average columns size */}
+                <th className="h-0 py-0 border-none w-32"></th>
+                <th className="h-0 py-0 border-none w-40"></th>
               </tr>
               {/* Row 1: Headers */}
               <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold">
@@ -181,6 +224,10 @@ export const QuarterlyComparison: React.FC<QuarterlyComparisonProps> = ({
                     {comp}
                   </th>
                 ))}
+                {/* Average Column Header */}
+                <th colSpan={2} className="px-3 py-3 text-center border-r border-slate-200 dark:border-slate-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-extrabold text-sm">
+                  평균
+                </th>
               </tr>
               {/* Row 2: Headers */}
               <tr className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800 text-slate-450 dark:text-slate-550 font-bold">
@@ -190,15 +237,22 @@ export const QuarterlyComparison: React.FC<QuarterlyComparisonProps> = ({
                     <th className="px-3 py-2 text-right border-r border-slate-200 dark:border-slate-800">금액</th>
                   </React.Fragment>
                 ))}
+                {/* Average Sub Headers */}
+                <th className="px-3 py-2 text-right border-r border-slate-100 dark:border-slate-800/55 bg-indigo-50/20 dark:bg-indigo-950/10 text-indigo-900 dark:text-indigo-305">단가</th>
+                <th className="px-3 py-2 text-right border-r border-slate-200 dark:border-slate-800 bg-indigo-50/30 dark:bg-indigo-950/20 text-indigo-900 dark:text-indigo-305">금액</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
               {ITEM_CONFIGS.map((cfg, idx) => {
                 const isBondong = cfg.division === '본동(아파트)';
 
+                const avgPrice = comparisonData.itemAverages[cfg.name]?.currentAvgPrice || 0;
+                const prevAvgPrice = comparisonData.itemAverages[cfg.name]?.prevAvgPrice || 0;
+                const avgAmount = avgPrice * cfg.quantity;
+
                 return (
                   <tr key={cfg.name} className="hover:bg-slate-50/30 dark:hover:bg-slate-900/10 transition-colors">
-                    {/* Division column (flat, no rowSpan for bug-free sticky columns) */}
+                    {/* Division column */}
                     <td className="px-2 py-3 font-bold text-center bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 sticky left-0 z-10 text-[11px] text-slate-500">
                       {isBondong ? (
                         <>
@@ -257,6 +311,25 @@ export const QuarterlyComparison: React.FC<QuarterlyComparisonProps> = ({
                         </React.Fragment>
                       );
                     })}
+
+                    {/* Average Unit Price / Amount Columns */}
+                    <td className="px-3 py-2.5 text-right border-r border-slate-100 dark:border-slate-800/55 font-semibold bg-indigo-50/10 dark:bg-indigo-950/5 text-indigo-905 dark:text-indigo-200">
+                      {avgPrice > 0 ? (
+                        <>
+                          <span className="text-slate-800 dark:text-slate-200">{Math.round(avgPrice).toLocaleString()}원</span>
+                          {renderTrendBadge(avgPrice, prevAvgPrice)}
+                        </>
+                      ) : (
+                        <span className="text-slate-300 dark:text-slate-700">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 text-right border-r border-slate-200 dark:border-slate-800 font-extrabold bg-indigo-50/20 dark:bg-indigo-950/10 text-indigo-905 dark:text-indigo-200">
+                      {avgPrice > 0 ? (
+                        `${Math.round(avgAmount).toLocaleString()}원`
+                      ) : (
+                        <span className="text-slate-300 dark:text-slate-700">-</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -281,6 +354,15 @@ export const QuarterlyComparison: React.FC<QuarterlyComparisonProps> = ({
                     </React.Fragment>
                   );
                 })}
+                {/* Average Total Sum */}
+                <td className="px-3 py-3 border-r border-slate-100 dark:border-slate-800/55 bg-indigo-100/10 dark:bg-indigo-900/10"></td>
+                <td className="px-3 py-3 text-right border-r border-slate-200 dark:border-slate-800 font-black text-sm text-indigo-800 dark:text-indigo-300 bg-indigo-100/20 dark:bg-indigo-900/20">
+                  {comparisonData.avgTotalCurrent > 0 ? (
+                    `${Math.round(comparisonData.avgTotalCurrent).toLocaleString()}원`
+                  ) : (
+                    '-'
+                  )}
+                </td>
               </tr>
 
               {/* vs. Previous Quarter Row */}
@@ -322,6 +404,41 @@ export const QuarterlyComparison: React.FC<QuarterlyComparisonProps> = ({
                     </td>
                   );
                 })}
+
+                {/* Average vs. Previous Quarter */}
+                {(() => {
+                  const avgTotalCurrent = comparisonData.avgTotalCurrent;
+                  const avgTotalPrev = comparisonData.avgTotalPrev;
+                  const hasPrev = avgTotalPrev > 0;
+                  const ratio = hasPrev ? Math.round((avgTotalCurrent / avgTotalPrev) * 100) : null;
+                  const rate = hasPrev ? Math.round(((avgTotalCurrent - avgTotalPrev) / avgTotalPrev) * 1000) / 10 : null;
+
+                  let textColor = "text-slate-500 dark:text-slate-400";
+                  let bgTint = "bg-indigo-50/10 dark:bg-indigo-950/10";
+                  let icon = null;
+
+                  if (rate && rate > 0) {
+                    textColor = "text-rose-600 dark:text-rose-455 font-black";
+                    icon = <TrendingUp className="h-4 w-4 text-rose-500 inline mr-0.5" />;
+                  } else if (rate && rate < 0) {
+                    textColor = "text-blue-600 dark:text-blue-455 font-black";
+                    icon = <TrendingDown className="h-4 w-4 text-blue-500 inline mr-0.5" />;
+                  }
+
+                  return (
+                    <td colSpan={2} className={`px-3 py-3.5 text-center border-r border-slate-250 dark:border-slate-800 font-extrabold text-sm ${textColor} ${bgTint}`}>
+                      {hasPrev && ratio !== null && rate !== null ? (
+                        <span className="flex items-center justify-center gap-1">
+                          {icon}
+                          <span>{ratio}%</span>
+                          <span className="text-[11px] font-semibold">({rate > 0 ? `+${rate}` : rate}%)</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-650 font-normal">-</span>
+                      )}
+                    </td>
+                  );
+                })()}
               </tr>
             </tbody>
           </table>

@@ -49,20 +49,40 @@ function saveLocalData(data: PriceDataRow[]) {
 export async function getAllPrices(): Promise<PriceDataRow[]> {
   if (useSupabase && supabase) {
     try {
-      const { data, error } = await supabase
-        .from('price_performance')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let allData: any[] = [];
+      let from = 0;
+      let to = 999;
+      let hasMore = true;
 
-      if (error) throw error;
-      
-      if (!data || data.length === 0) {
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('price_performance')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < 1000) {
+            hasMore = false;
+          } else {
+            from += 1000;
+            to += 1000;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (allData.length === 0) {
         console.log('Supabase table is empty.');
         return [];
       }
 
       // Map database schema columns back to camelCase PriceDataRow interface
-      return data.map((row: any) => ({
+      return allData.map((row: any) => ({
         id: row.id,
         quarter: row.quarter,
         company: row.company,
@@ -103,7 +123,8 @@ export async function insertPrices(newRows: PriceDataRow[]): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Supabase insert failed, falling back to local:', err);
+      console.error('Supabase insert failed:', err);
+      throw err;
     }
   }
   

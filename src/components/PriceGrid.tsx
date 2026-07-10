@@ -5,7 +5,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { ColDef, CellValueChangedEvent, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { PriceDataRow, QUARTERS, COMPANIES, ITEM_CONFIGS } from '../data/dummyData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
-import { Table, CheckSquare, Edit3 } from 'lucide-react';
+import { Table, CheckSquare, Edit3, Download } from 'lucide-react';
 
 // Import AG Grid styles
 import 'ag-grid-community/styles/ag-grid.css';
@@ -143,6 +143,60 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
       const idsToDelete = selectedData.map(row => row.id);
       onDeleteRows(idsToDelete);
     }
+  };
+
+  const handleDownloadCSV = () => {
+    const api = gridApiRef.current;
+    let dataToExport = rowData;
+    
+    if (api) {
+      const selectedData = api.getSelectedRows() as PriceDataRow[];
+      if (selectedData.length > 0) {
+        dataToExport = selectedData;
+      }
+    }
+
+    if (dataToExport.length === 0) {
+      alert('다운로드할 데이터가 없습니다.');
+      return;
+    }
+
+    // CSV headers
+    const headers = ['분기', '건설사', '현장명', '구분', '품명', '규격', '단위', '수량', '단가', '총 금액', '그래프 반영 여부'];
+    
+    // CSV rows
+    const csvRows = [
+      headers.join(','), // Header row
+      ...dataToExport.map(row => {
+        const totalAmount = row.price * row.quantity;
+        return [
+          `"${row.quarter.replace(/"/g, '""')}"`,
+          `"${row.company.replace(/"/g, '""')}"`,
+          `"${row.siteName.replace(/"/g, '""')}"`,
+          `"${row.division.replace(/"/g, '""')}"`,
+          `"${row.itemName.replace(/"/g, '""')}"`,
+          `"${row.spec.replace(/"/g, '""')}"`,
+          `"${row.unit.replace(/"/g, '""')}"`,
+          row.quantity,
+          row.price,
+          totalAmount,
+          row.includeInGraph ? 'Y' : 'N'
+        ].join(',');
+      })
+    ];
+
+    const csvContent = '\uFEFF' + csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `실적단가_데이터_${dateStr}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Configure row selection for AG Grid v36
@@ -310,6 +364,13 @@ export const PriceGrid: React.FC<PriceGridProps> = ({
               className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white rounded-lg cursor-pointer flex items-center gap-1.5 shadow-md shadow-rose-500/10 hover:shadow-rose-500/20 transition-all duration-200"
             >
               선택 삭제
+            </button>
+            <button
+              onClick={handleDownloadCSV}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold text-white rounded-lg cursor-pointer flex items-center gap-1.5 shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all duration-200"
+            >
+              <Download className="h-3.5 w-3.5" />
+              CSV 다운로드
             </button>
           </div>
           <div className="flex gap-4 text-xs">

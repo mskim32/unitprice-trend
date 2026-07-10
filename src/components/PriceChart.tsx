@@ -217,7 +217,7 @@ export const PriceChart: React.FC<PriceChartProps> = ({ data, selectedItem, onPo
         <div className="flex flex-col gap-1">
           <CardTitle className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
             <AreaChart className="h-5 w-5 text-blue-500" />
-            건설사별 분기 실적단가 총 금액 추이
+            건설사별 골조공사 실적 추이
           </CardTitle>
           <CardDescription className="text-sm text-slate-500 dark:text-slate-400">
             선택된 품명 <strong>[{selectedItem}]</strong>의 분기별 실적 합계 금액 (Quantity × Price) Trend 분석
